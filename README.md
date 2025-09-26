@@ -64,7 +64,7 @@ Many apps refuse to run on emulators (e.g., Android Studio emulator, Genymotion)
 The script **overrides Android Build constants** to mimic a real Samsung device:
 ```js
 PRODUCT = "gracerltexx"
-MANUFACTURER = "samsung"
+MANUFACTURER = "samsung-Pentest1337"
 MODEL = "SM-N935F"
 FINGERPRINT = "samsung/.../user/release-keys"
 ```
@@ -100,16 +100,15 @@ Certificate pinning prevents man-in-the-middle (MITM) attacks by hardcoding expe
 
 ### ✅ **Multiple Pinning Library Bypasses**
 It hooks **dozens of common pinning implementations**, including:
-_____________________________________________________________________________________________________________________________________________________________
-| Library / Framework                                                |                                   Hooked Methods                                      |
-|--------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| **OkHttp (v3 & older)**                                            | `CertificatePinner.check()` (4 variants)                                              |
-| **TrustKit**                                                       | `OkHostnameVerifier.verify()`, `PinningTrustManager.checkServerTrusted()`             |
-| **Conscrypt (Android’s TLS stack)**                                | `TrustManagerImpl.verifyChain()`, `CertPinManager.isChainValid()`                     |
-| **WebView**                                                        | `WebViewClient.onReceivedSslError()` → auto-proceeds                                  |
-| **IBM MobileFirst / Worklight**                                    | `pinTrustedCertificatePublicKey()`, `HostNameVerifierWithCertificatePinning.verify()` |
-| **Appcelerator, Cordova, Netty, Squareup, Boye HTTP Client**, etc. | All relevant cert validation methods                                                  |
-==============================================================================================================================================================
+
+| Library / Framework | Hooked Methods |
+|---------------------|----------------|
+| **OkHttp (v3 & older)** | `CertificatePinner.check()` (4 variants) |
+| **TrustKit** | `OkHostnameVerifier.verify()`, `PinningTrustManager.checkServerTrusted()` |
+| **Conscrypt (Android’s TLS stack)** | `TrustManagerImpl.verifyChain()`, `CertPinManager.isChainValid()` |
+| **WebView** | `WebViewClient.onReceivedSslError()` → auto-proceeds |
+| **IBM MobileFirst / Worklight** | `pinTrustedCertificatePublicKey()`, `HostNameVerifierWithCertificatePinning.verify()` |
+| **Appcelerator, Cordova, Netty, Squareup, Boye HTTP Client**, etc. | All relevant cert validation methods |
 
 ### 🛡️ **Generic TrustManager Bypass**
 - Creates a **custom `X509TrustManager`** that accepts **any certificate**.
@@ -143,12 +142,11 @@ This script is used by:
 ---
 
 ## Summary
-_____________________________________________________________________________________________________________________
-|         Category        |                       Technique                   |               Goal                   |
-|-------------------------|---------------------------------------------------|--------------------------------------|
-| **Root Bypass**         | Hide files, packages, shell commands, spoof props | Make rooted device appear clean      |
-| **Emulator Bypass**     | Spoof device info, hide artifacts, fake CPU       | Make emulator appear as real device  |
-| **SSL Pinning Bypass**  | Disable cert validation across 20+ libraries      | Allow MITM traffic inspection        |
-======================================================================================================================
+
+| Category | Technique | Goal |
+|--------|---------|------|
+| **Root Bypass** | Hide files, packages, shell commands, spoof props | Make rooted device appear clean |
+| **Emulator Bypass** | Spoof device info, hide artifacts, fake CPU | Make emulator appear as real device |
+| **SSL Pinning Bypass** | Disable cert validation across 20+ libraries | Allow MITM traffic inspection |
 
 This is a **state-of-the-art, production-grade Frida script** that combines **best practices from multiple open-source bypass scripts** (e.g., Universal Android SSL Pinning Bypass, RootBeer bypasses, etc.) into a single, robust tool.
