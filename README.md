@@ -1,4 +1,4 @@
-This polished Frida script is a **comprehensive anti-detection bypass tool** designed to **hide root, emulator artifacts, and SSL pinning** on Android devices during dynamic analysis (e.g., reverse engineering, penetration testing, or automated app analysis). It is typically injected into a target Android application at runtime using Frida to **fool root detection, emulator detection, and certificate pinning mechanisms**.
+This polished Frida script, a **comprehensive anti-detection bypass tool** designed to **hide root, emulator artifacts, and SSL pinning** on Android devices during dynamic analysis (e.g., reverse engineering, penetration testing, or automated app analysis). It is typically injected into a target Android application at runtime using Frida to **fool root detection, emulator detection, and certificate pinning mechanisms**.
 
 Below is a **detailed breakdown** of what the script does, grouped by functionality:
 
