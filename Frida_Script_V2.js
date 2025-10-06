@@ -1,6 +1,3 @@
-// File: Frida_Script_pretty_logging_v2.js
-// Improvements: ANSI colorized logs, safer stack trace helper, fixes & hardening
-
 const ENABLE_RANDOMIZE_BUILD = false;
 const ENABLE_COLOR = true; // set false to disable ANSI color sequences
 const LITE_ONLY = false;   // if true, script will early-return and only run SSL unpinning
@@ -643,3 +640,4 @@ setTimeout(function() {
 }, 0);
 
 // ---------- END ----------
+
