@@ -1,6 +1,8 @@
+// Enhanced with comprehensive persistence features from Frida_Script.js
+
 const ENABLE_RANDOMIZE_BUILD = false;
-const ENABLE_COLOR = true; // set false to disable ANSI color sequences
-const LITE_ONLY = false;   // if true, script will early-return and only run SSL unpinning
+const ENABLE_COLOR = true;
+const LITE_ONLY = false;
 
 // ---------- ANSI helpers ----------
 const ANSI = {
@@ -34,7 +36,6 @@ function logInfo(msg) { console.log(colorize('ℹ️  ' + msg, ANSI.cyan)); }
 function logWarn(msg) { console.log(colorize('⚠️  ' + msg, ANSI.yellow)); }
 function logError(msg) { console.log(colorize('❌  ' + msg, ANSI.red)); }
 
-// small wrapper to safely call a function and log errors
 function safe(fn, name) {
     try { fn(); }
     catch (err) { logWarn(name + ' -> ' + (err && err.message ? err.message : err)); }
@@ -84,7 +85,6 @@ function randomBuildProps() {
     return models[Math.floor(Math.random()*models.length)];
 }
 
-// Robust stack trace extraction using android.util.Log
 function getStackTraceString() {
     try {
         var Exception = Java.use('java.lang.Exception');
@@ -97,13 +97,9 @@ function getStackTraceString() {
 
 // ---------- LITE mode quick exit ----------
 if (LITE_ONLY) {
-    // run only SSL unpinning block (defined below) and exit early
     Java.perform(function() {
         logSection('LITE MODE: SSL Unpinning only');
-        // copy the SSL unpinning block below (or call the function if extracted)
-        // For brevity, we'll jump to the SSL block defined later by invoking a named function if present.
     });
-    // we intentionally do not return here because SSL block runs in setTimeout later in file
 }
 
 // ---------- Java-level: emulator spoof & basic hooks ----------
@@ -174,7 +170,7 @@ Java.perform(function() {
         } catch(e) { logInfo('PackageManager hook unavailable: ' + (e && e.message ? e.message : e)); }
     }, 'PackageManager.getPackageInfo');
 
-    // android_getCpuFamily native hook (if available)
+    // android_getCpuFamily native hook
     safe(function() {
         try {
             var sym = Module.findExportByName(null, 'android_getCpuFamily');
@@ -195,13 +191,13 @@ Java.perform(function() {
     }, 'android_getCpuFamily');
 });
 
-// ---------- Root bypass & native file function hooks ----------
+// ---------- Enhanced Root bypass & comprehensive hooks ----------
 setTimeout(function() {
-    logSection('Root bypass (native + Java)');
+    logSection('Enhanced Root Bypass (Complete Coverage)');
 
-    // helper to print stack traces when needed (returns string)
     function stackTraceHere() { return getStackTraceString(); }
 
+    // Enhanced native file checks
     safe(function bypassNativeFileCheck() {
         try {
             var fopen = Module.findExportByName('libc.so', 'fopen');
@@ -242,6 +238,7 @@ setTimeout(function() {
         } catch(e) { logWarn('bypassNativeFileCheck access error: ' + (e && e.message ? e.message : e)); }
     }, 'bypassNativeFileCheck');
 
+    // Enhanced Java file system checks
     safe(function bypassJavaFileCheck() {
         try {
             var UnixFileSystem = Java.use('java.io.UnixFileSystem');
@@ -259,6 +256,7 @@ setTimeout(function() {
         } catch(e) { logInfo('UnixFileSystem.checkAccess not available: ' + (e && e.message ? e.message : e)); }
     }, 'bypassJavaFileCheck');
 
+    // Enhanced system properties
     safe(function setProp() {
         try {
             var Build = Java.use('android.os.Build');
@@ -297,6 +295,7 @@ setTimeout(function() {
         } catch(e) { logWarn('setProp system_property_get error: ' + (e && e.message ? e.message : e)); }
     }, 'setProp');
 
+    // Enhanced root app package checks
     safe(function bypassRootAppCheck() {
         try {
             var ApplicationPackageManager = Java.use('android.app.ApplicationPackageManager');
@@ -311,6 +310,7 @@ setTimeout(function() {
         } catch(e) { logInfo('bypassRootAppCheck not possible: ' + (e && e.message ? e.message : e)); }
     }, 'bypassRootAppCheck');
 
+    // Enhanced shell command interception
     safe(function bypassShellCheck() {
         try {
             var StringClass = Java.use('java.lang.String');
@@ -330,29 +330,44 @@ setTimeout(function() {
         } catch(e) { logInfo('bypassShellCheck not available: ' + (e && e.message ? e.message : e)); }
     }, 'bypassShellCheck');
 
-    // Runtime.exec hooks: safer consolidation
+    // COMPREHENSIVE Runtime.exec hooks - ALL overloads covered
     safe(function runtimeExecHooks() {
         try {
             var Runtime = Java.use('java.lang.Runtime');
-            // hook java.lang.String overload if exists
+            var StringClass = Java.use('java.lang.String');
+            
+            // Hook ALL Runtime.exec overloads for maximum coverage
+            const execOverloads = [
+                'java.lang.String',
+                '[Ljava.lang.String;',
+                'java.lang.String', '[Ljava.lang.String;',
+                '[Ljava.lang.String;', '[Ljava.lang.String;',
+                '[Ljava.lang.String;', '[Ljava.lang.String;', 'java.io.File',
+                'java.lang.String', '[Ljava.lang.String;', 'java.io.File'
+            ];
+            
+            let hookedCount = 0;
+            
+            // Hook string overload
             try {
                 var execStr = Runtime.exec.overload('java.lang.String');
                 execStr.implementation = function(cmd) {
                     try {
                         if (cmd && (cmd.indexOf('getprop') != -1 || cmd == 'mount' || cmd.indexOf('build.prop') != -1 || cmd == 'id' || cmd == 'sh')) {
-                            logBypass('Bypass ' + cmd + ' command');
+                            logBypass('Bypass Runtime.exec(String): ' + cmd);
                             return execStr.call(this, 'grep');
                         }
                         if (cmd == 'su') {
-                            logBypass('Bypass ' + cmd + ' command');
+                            logBypass('Bypass Runtime.exec(String) su command');
                             return execStr.call(this, 'justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled');
                         }
                     } catch(e) {}
                     return execStr.call(this, cmd);
                 };
-            } catch(e) { logInfo('Runtime.exec(java.lang.String) not hooked: ' + (e && e.message ? e.message : e)); }
+                hookedCount++;
+            } catch(e) {}
 
-            // hook String[] overload if exists
+            // Hook string array overload
             try {
                 var execArr = Runtime.exec.overload('[Ljava.lang.String;');
                 execArr.implementation = function(cmd) {
@@ -360,22 +375,245 @@ setTimeout(function() {
                         for (var i=0;i<cmd.length;i++){
                             var tmp = cmd[i];
                             if (tmp && (tmp.indexOf('getprop') != -1 || tmp == 'mount' || tmp.indexOf('build.prop') != -1 || tmp == 'id' || tmp == 'sh')) {
-                                logBypass('Bypass ' + cmd + ' command');
+                                logBypass('Bypass Runtime.exec(String[]): ' + cmd);
                                 return execArr.call(this, Java.array('java.lang.String',['grep']));
                             }
                             if (tmp == 'su') {
-                                logBypass('Bypass ' + cmd + ' command');
+                                logBypass('Bypass Runtime.exec(String[]) su command');
                                 return execArr.call(this, Java.array('java.lang.String',['justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled']));
                             }
                         }
                     } catch(e) {}
                     return execArr.call(this, cmd);
                 };
-            } catch(e) { logInfo('Runtime.exec(String[]) not hooked: ' + (e && e.message ? e.message : e)); }
+                hookedCount++;
+            } catch(e) {}
 
-            logSuccess('Runtime.exec hooks (selected) installed');
+            // Hook string + string array overload
+            try {
+                var execStrArr = Runtime.exec.overload('java.lang.String', '[Ljava.lang.String;');
+                execStrArr.implementation = function(cmd, env) {
+                    try {
+                        if (cmd && (cmd.indexOf('getprop') != -1 || cmd == 'mount' || cmd.indexOf('build.prop') != -1 || cmd == 'id' || cmd == 'sh')) {
+                            logBypass('Bypass Runtime.exec(String, String[]): ' + cmd);
+                            return execStr.call(this, 'grep');
+                        }
+                        if (cmd == 'su') {
+                            logBypass('Bypass Runtime.exec(String, String[]) su command');
+                            return execStr.call(this, 'justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled');
+                        }
+                    } catch(e) {}
+                    return execStrArr.call(this, cmd, env);
+                };
+                hookedCount++;
+            } catch(e) {}
+
+            // Hook string array + string array overload  
+            try {
+                var execArrArr = Runtime.exec.overload('[Ljava.lang.String;', '[Ljava.lang.String;');
+                execArrArr.implementation = function(cmdarr, envp) {
+                    try {
+                        for (var i=0;i<cmdarr.length;i++){
+                            var tmp = cmdarr[i];
+                            if (tmp && (tmp.indexOf('getprop') != -1 || tmp == 'mount' || tmp.indexOf('build.prop') != -1 || tmp == 'id' || tmp == 'sh')) {
+                                logBypass('Bypass Runtime.exec(String[], String[]): ' + cmdarr);
+                                return execArr.call(this, Java.array('java.lang.String',['grep']));
+                            }
+                            if (tmp == 'su') {
+                                logBypass('Bypass Runtime.exec(String[], String[]) su command');
+                                return execArr.call(this, Java.array('java.lang.String',['justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled']));
+                            }
+                        }
+                    } catch(e) {}
+                    return execArrArr.call(this, cmdarr, envp);
+                };
+                hookedCount++;
+            } catch(e) {}
+
+            // Hook with file parameter overloads
+            try {
+                var execArrFile = Runtime.exec.overload('[Ljava.lang.String;', '[Ljava.lang.String;', 'java.io.File');
+                execArrFile.implementation = function(cmdarr, env, file) {
+                    try {
+                        for (var i=0;i<cmdarr.length;i++){
+                            var tmp = cmdarr[i];
+                            if (tmp && (tmp.indexOf('getprop') != -1 || tmp == 'mount' || tmp.indexOf('build.prop') != -1 || tmp == 'id' || tmp == 'sh')) {
+                                logBypass('Bypass Runtime.exec(String[], String[], File): ' + cmdarr);
+                                return execArr.call(this, Java.array('java.lang.String',['grep']));
+                            }
+                            if (tmp == 'su') {
+                                logBypass('Bypass Runtime.exec(String[], String[], File) su command');
+                                return execArr.call(this, Java.array('java.lang.String',['justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled']));
+                            }
+                        }
+                    } catch(e) {}
+                    return execArrFile.call(this, cmdarr, env, file);
+                };
+                hookedCount++;
+            } catch(e) {}
+
+            try {
+                var execStrFile = Runtime.exec.overload('java.lang.String', '[Ljava.lang.String;', 'java.io.File');
+                execStrFile.implementation = function(cmd, env, dir) {
+                    try {
+                        if (cmd && (cmd.indexOf('getprop') != -1 || cmd == 'mount' || cmd.indexOf('build.prop') != -1 || cmd == 'id' || cmd == 'sh')) {
+                            logBypass('Bypass Runtime.exec(String, String[], File): ' + cmd);
+                            return execStr.call(this, 'grep');
+                        }
+                        if (cmd == 'su') {
+                            logBypass('Bypass Runtime.exec(String, String[], File) su command');
+                            return execStr.call(this, 'justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled');
+                        }
+                    } catch(e) {}
+                    return execStrFile.call(this, cmd, env, dir);
+                };
+                hookedCount++;
+            } catch(e) {}
+
+            logSuccess('Runtime.exec hooks installed (' + hookedCount + ' overloads)');
         } catch(e) { logWarn('runtimeExecHooks failed: ' + (e && e.message ? e.message : e)); }
     }, 'runtimeExecHooks');
+
+    // ProcessBuilder.start hook - NEW
+    safe(function processBuilderHook() {
+        try {
+            var ProcessBuilder = Java.use('java.lang.ProcessBuilder');
+            ProcessBuilder.start.implementation = function() {
+                try {
+                    var cmd = this.command.call(this);
+                    var shouldModifyCommand = false;
+                    
+                    for (var i = 0; i < cmd.size(); i++) {
+                        var tmp_cmd = cmd.get(i).toString();
+                        if (tmp_cmd.indexOf('getprop') != -1 || tmp_cmd.indexOf('mount') != -1 || 
+                            tmp_cmd.indexOf('build.prop') != -1 || tmp_cmd.indexOf('id') != -1) {
+                            shouldModifyCommand = true;
+                            break;
+                        }
+                    }
+                    
+                    if (shouldModifyCommand) {
+                        logBypass('Bypass ProcessBuilder: ' + cmd);
+                        this.command.call(this, Java.array('java.lang.String', ['grep']));
+                        return this.start.call(this);
+                    }
+                    
+                    // Check for su command
+                    for (var i = 0; i < cmd.size(); i++) {
+                        var tmp_cmd = cmd.get(i).toString();
+                        if (tmp_cmd == 'su') {
+                            logBypass('Bypass ProcessBuilder su command: ' + cmd);
+                            this.command.call(this, Java.array('java.lang.String', 
+                                ['justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled']));
+                            return this.start.call(this);
+                        }
+                    }
+                } catch(e) {
+                    logWarn('ProcessBuilder.start hook error: ' + (e && e.message ? e.message : e));
+                }
+                return this.start.call(this);
+            };
+            logSuccess('ProcessBuilder.start hooked');
+        } catch(e) { logInfo('ProcessBuilder.start hook not available: ' + (e && e.message ? e.message : e)); }
+    }, 'ProcessBuilder.start');
+
+    // ProcessManager hooks - NEW
+    safe(function processManagerHooks() {
+        try {
+            Java.perform(function() {
+                var loaded_classes = Java.enumerateLoadedClassesSync();
+                if (loaded_classes.indexOf("java.lang.ProcessManager") != -1) {
+                    try {
+                        var ProcessManager = Java.use('java.lang.ProcessManager');
+                        
+                        // Hook ProcessManager.exec with file and redirect
+                        try {
+                            var ProcManExec = ProcessManager.exec.overload(
+                                '[Ljava.lang.String;', '[Ljava.lang.String;', 'java.io.File', 'boolean'
+                            );
+                            ProcManExec.implementation = function(cmd, env, workdir, redirectstderr) {
+                                var fake_cmd = cmd;
+                                try {
+                                    for (var i = 0; i < cmd.length; i++) {
+                                        var tmp_cmd = cmd[i];
+                                        if (tmp_cmd.indexOf('getprop') != -1 || tmp_cmd == 'mount' || 
+                                            tmp_cmd.indexOf('build.prop') != -1 || tmp_cmd == 'id') {
+                                            logBypass('Bypass ProcessManager.exec: ' + cmd);
+                                            fake_cmd = ['grep'];
+                                            break;
+                                        }
+                                        if (tmp_cmd == 'su') {
+                                            logBypass('Bypass ProcessManager.exec su: ' + cmd);
+                                            fake_cmd = ['justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled'];
+                                            break;
+                                        }
+                                    }
+                                } catch(e) {}
+                                return ProcManExec.call(this, fake_cmd, env, workdir, redirectstderr);
+                            };
+                        } catch(e) {}
+                        
+                        // Hook ProcessManager.exec variant
+                        try {
+                            var ProcManExecVariant = ProcessManager.exec.overload(
+                                '[Ljava.lang.String;', '[Ljava.lang.String;', 'java.lang.String',
+                                'java.io.FileDescriptor', 'java.io.FileDescriptor', 'java.io.FileDescriptor', 'boolean'
+                            );
+                            ProcManExecVariant.implementation = function(cmd, env, directory, stdin, stdout, stderr, redirect) {
+                                var fake_cmd = cmd;
+                                try {
+                                    for (var i = 0; i < cmd.length; i++) {
+                                        var tmp_cmd = cmd[i];
+                                        if (tmp_cmd.indexOf('getprop') != -1 || tmp_cmd == 'mount' || 
+                                            tmp_cmd.indexOf('build.prop') != -1 || tmp_cmd == 'id') {
+                                            logBypass('Bypass ProcessManager.exec variant: ' + cmd);
+                                            fake_cmd = ['grep'];
+                                            break;
+                                        }
+                                        if (tmp_cmd == 'su') {
+                                            logBypass('Bypass ProcessManager.exec variant su: ' + cmd);
+                                            fake_cmd = ['justafakecommandthatcannotexistsusingthisshouldthowanexceptionwheneversuiscalled'];
+                                            break;
+                                        }
+                                    }
+                                } catch(e) {}
+                                return ProcManExecVariant.call(this, fake_cmd, env, directory, stdin, stdout, stderr, redirect);
+                            };
+                        } catch(e) {}
+                        
+                        logSuccess('ProcessManager hooks installed');
+                    } catch(err) {
+                        logWarn('ProcessManager Hook failed: ' + err);
+                    }
+                } else {
+                    logInfo('ProcessManager not loaded in target');
+                }
+            });
+        } catch(e) { logWarn('processManagerHooks error: ' + (e && e.message ? e.message : e)); }
+    }, 'ProcessManager hooks');
+
+    // KeyInfo hardware security check bypass - NEW
+    safe(function keyInfoHook() {
+        try {
+            Java.perform(function() {
+                var loaded_classes = Java.enumerateLoadedClassesSync();
+                if (loaded_classes.indexOf("android.security.keystore.KeyInfo") != -1) {
+                    try {
+                        var KeyInfo = Java.use('android.security.keystore.KeyInfo');
+                        KeyInfo.isInsideSecureHardware.implementation = function() {
+                            logBypass('Bypass isInsideSecureHardware check');
+                            return true;
+                        };
+                        logSuccess('KeyInfo.isInsideSecureHardware hooked');
+                    } catch(err) {
+                        logWarn('KeyInfo Hook failed: ' + err);
+                    }
+                } else {
+                    logInfo('KeyInfo not loaded in target');
+                }
+            });
+        } catch(e) { logWarn('keyInfoHook error: ' + (e && e.message ? e.message : e)); }
+    }, 'KeyInfo hook');
 
     // String.contains tweak for test-keys
     safe(function() {
@@ -475,33 +713,27 @@ setTimeout(function() {
         } catch(e) { logInfo('BufferedReader.readLine hooking not available: ' + (e && e.message ? e.message : e)); }
     }, 'BufferedReader.readLine');
 
-    logSuccess('Root bypass module attached');
+    logSuccess('Enhanced root bypass module attached with comprehensive coverage');
 }, 0);
 
-
-// ---------- SSL pinning bypass module ----------
+// ---------- Enhanced SSL pinning bypass module ----------
 setTimeout(function() {
     Java.perform(function() {
-        logSection('SSL Pinning Bypass');
-        logInfo('Unpinning Android app...');
+        logSection('Enhanced SSL Pinning Bypass');
 
         // Robust SSLPeerUnverifiedException auto-patcher
         safe(function() {
             try {
                 const UnverifiedCertError = Java.use('javax.net.ssl.SSLPeerUnverifiedException');
-                // Patch constructors that accept String and (String, Throwable)
                 try {
                     UnverifiedCertError.$init.overload('java.lang.String').implementation = function(str) {
-                        // Print a short stack trace for debugging and attempt auto-patch (best-effort)
                         logWarn('SSLPeerUnverifiedException raised: ' + (str || 'no-message'));
                         var st = getStackTraceString();
                         logInfo('Stacktrace (short):\n' + st.split('\n').slice(0,8).join('\n'));
-                        // attempt to discover caller and patch (best-effort)
                         try {
                             var Thread = Java.use('java.lang.Thread');
                             var frames = Thread.currentThread().getStackTrace();
                             if (frames && frames.length > 0) {
-                                // find first non-JDK frame - best-effort heuristic
                                 var idx = -1;
                                 for (var i=0;i<frames.length;i++){
                                     var cname = frames[i].getClassName();
@@ -515,11 +747,9 @@ setTimeout(function() {
                                     try {
                                         var Calling = Java.use(className);
                                         if (Calling[methodName]) {
-                                            // store original implementation if needed
                                             try {
                                                 Calling[methodName].implementation = function() {
                                                     logBypass('Auto-patch: bypassing ' + className + '->' + methodName);
-                                                    // safest: return default value based on return type if possible, else null/void
                                                     return null;
                                                 };
                                                 logSuccess('Auto-patched ' + className + '->' + methodName);
@@ -531,9 +761,8 @@ setTimeout(function() {
                         } catch(e) {}
                         return this.$init(str);
                     };
-                } catch(e) { /* constructor not present or different signature */ }
+                } catch(e) { }
 
-                // Also try to patch two-arg constructor if present
                 try {
                     UnverifiedCertError.$init.overload('java.lang.String','java.lang.Throwable').implementation = function(s,t) {
                         logWarn('SSLPeerUnverifiedException (2-arg) raised: ' + (s || 'no-message'));
@@ -549,6 +778,7 @@ setTimeout(function() {
         // Convenience wrapper for guarded installations
         const installGuarded = function(title, fn) { safe(fn, title); };
 
+        // HttpsURLConnection hooks
         installGuarded('HttpsURLConnection.setDefaultHostnameVerifier', function() {
             try {
                 const HttpsURLConnection = Java.use('javax.net.ssl.HttpsURLConnection');
@@ -609,7 +839,7 @@ setTimeout(function() {
             } catch(e) { logInfo('TrustManagerImpl not available on this runtime'); }
         });
 
-        // OkHttp v3 CertificatePinner hooks (several overloads)
+        // OkHttp v3 CertificatePinner hooks
         installGuarded('OkHTTP CertificatePinner', function() {
             try {
                 const CP = Java.use('okhttp3.CertificatePinner');
@@ -621,8 +851,39 @@ setTimeout(function() {
             } catch(e) { logInfo('okhttp3.CertificatePinner not present'); }
         });
 
-        // Best-effort guarded hooks for other libraries
-        const guardedTargets = [
+        // ENHANCED: Additional SSL pinning libraries from Frida_Script.js
+        const enhancedSslTargets = [
+            // Squareup OkHTTP (pre-v3)
+            {name: 'Squareup CertificatePinner (cert)', path: 'com.squareup.okhttp.CertificatePinner', fn: function(cls){ try{ cls.check.overload('java.lang.String','java.security.cert.Certificate').implementation = function(a,b){ logBypass('Bypassing Squareup CertificatePinner (cert): '+a); return; }; }catch(e){} }},
+            {name: 'Squareup CertificatePinner (list)', path: 'com.squareup.okhttp.CertificatePinner', fn: function(cls){ try{ cls.check.overload('java.lang.String','java.util.List').implementation = function(a,b){ logBypass('Bypassing Squareup CertificatePinner (list): '+a); return; }; }catch(e){} }},
+            
+            // Squareup OkHostnameVerifier
+            {name: 'Squareup OkHostnameVerifier (cert)', path: 'com.squareup.okhttp.internal.tls.OkHostnameVerifier', fn: function(cls){ try{ cls.verify.overload('java.lang.String','java.security.cert.X509Certificate').implementation = function(a,b){ logBypass('Bypassing Squareup OkHostnameVerifier (cert): '+a); return true; }; }catch(e){} }},
+            {name: 'Squareup OkHostnameVerifier (SSLSession)', path: 'com.squareup.okhttp.internal.tls.OkHostnameVerifier', fn: function(cls){ try{ cls.verify.overload('java.lang.String','javax.net.ssl.SSLSession').implementation = function(a,b){ logBypass('Bypassing Squareup OkHostnameVerifier (SSLSession): '+a); return true; }; }catch(e){} }},
+            
+            // Netty
+            {name: 'Netty FingerprintTrustManagerFactory', path: 'io.netty.handler.ssl.util.FingerprintTrustManagerFactory', fn: function(cls){ try{ cls.checkTrusted.implementation = function(type,chain){ logBypass('Bypassing Netty FingerprintTrustManagerFactory'); }; }catch(e){} }},
+            
+            // Apache Harmony
+            {name: 'OpenSSLSocketImpl Apache Harmony', path: 'org.apache.harmony.xnet.provider.jsse.OpenSSLSocketImpl', fn: function(cls){ try{ cls.verifyCertificateChain.implementation = function(asn1DerEncodedCertificateChain,authMethod){ logBypass('Bypassing OpenSSLSocketImpl Apache Harmony'); }; }catch(e){} }},
+            
+            // Boye AbstractVerifier
+            {name: 'Boye AbstractVerifier', path: 'ch.boye.httpclientandroidlib.conn.ssl.AbstractVerifier', fn: function(cls){ try{ cls.verify.implementation = function(host,ssl){ logBypass('Bypassing Boye AbstractVerifier: '+host); }; }catch(e){} }},
+            
+            // CWAC-Netsecurity
+            {name: 'CWAC-Netsecurity CertPinManager', path: 'com.commonsware.cwac.netsecurity.conscrypt.CertPinManager', fn: function(cls){ try{ cls.isChainValid.overload('java.lang.String','java.util.List').implementation = function(a,b){ logBypass('Bypassing CWAC-Netsecurity CertPinManager: '+a); return true; }; }catch(e){} }},
+            
+            // Worklight Androidgap
+            {name: 'Worklight Androidgap WLCertificatePinningPlugin', path: 'com.worklight.androidgap.plugin.WLCertificatePinningPlugin', fn: function(cls){ try{ cls.execute.overload('java.lang.String','org.json.JSONArray','org.apache.cordova.CallbackContext').implementation = function(a,b,c){ logBypass('Bypassing Worklight Androidgap WLCertificatePinningPlugin: '+a); return true; }; }catch(e){} }},
+            
+            // Android WebViewClient
+            {name: 'Android WebViewClient (SslErrorHandler)', path: 'android.webkit.WebViewClient', fn: function(cls){ try{ cls.onReceivedSslError.overload('android.webkit.WebView','android.webkit.SslErrorHandler','android.net.http.SslError').implementation = function(obj1,obj2,obj3){ logBypass('Bypassing Android WebViewClient (SslErrorHandler)'); }; }catch(e){} }},
+            {name: 'Android WebViewClient (WebResourceError)', path: 'android.webkit.WebViewClient', fn: function(cls){ try{ cls.onReceivedSslError.overload('android.webkit.WebView','android.webkit.WebResourceRequest','android.webkit.WebResourceError').implementation = function(obj1,obj2,obj3){ logBypass('Bypassing Android WebViewClient (WebResourceError)'); }; }catch(e){} }},
+            
+            // Apache Cordova WebViewClient
+            {name: 'Apache Cordova WebViewClient', path: 'org.apache.cordova.CordovaWebViewClient', fn: function(cls){ try{ cls.onReceivedSslError.overload('android.webkit.WebView','android.webkit.SslErrorHandler','android.net.http.SslError').implementation = function(obj1,obj2,obj3){ logBypass('Bypassing Apache Cordova WebViewClient'); obj3.proceed(); }; }catch(e){} }},
+            
+            // Original targets from magic_Frida2.js
             {name: 'Trustkit OkHostnameVerifier', path: 'com.datatheorem.android.trustkit.pinning.OkHostnameVerifier', fn: function(cls){ try{ cls.verify.overload('java.lang.String','javax.net.ssl.SSLSession').implementation = function(a,b){ logBypass('Bypassing Trustkit OkHostnameVerifier(SSLSession): '+a); return true; }; cls.verify.overload('java.lang.String','java.security.cert.X509Certificate').implementation = function(a,b){ logBypass('Bypassing Trustkit OkHostnameVerifier(cert): '+a); return true; }; }catch(e){} }},
             {name: 'Appmattus CT', path: 'com.appmattus.certificatetransparency.internal.verifier.CertificateTransparencyInterceptor', fn: function(cls){ try{ cls['intercept'].implementation = function(a){ logBypass('Bypassing Appmattus (CertificateTransparencyInterceptor)'); return a.proceed(a.request()); }; }catch(e){} }},
             {name: 'OpenSSLSocketImpl (conscrypt)', path: 'com.android.org.conscrypt.OpenSSLSocketImpl', fn: function(cls){ try{ cls.verifyCertificateChain.implementation = function(){ logBypass('Bypassing OpenSSLSocketImpl Conscrypt'); }; }catch(e){} }},
@@ -630,14 +891,13 @@ setTimeout(function() {
             {name: 'PhoneGap sslCertificateChecker', path: 'nl.xservices.plugins.sslCertificateChecker', fn: function(cls){ try{ cls.execute.overload('java.lang.String','org.json.JSONArray','org.apache.cordova.CallbackContext').implementation = function(a,b,c){ logBypass('Bypassing PhoneGap sslCertificateChecker: '+a); return true; }; }catch(e){} }}
         ];
 
-        guardedTargets.forEach(function(t){
+        enhancedSslTargets.forEach(function(t){
             try { let Cls = Java.use(t.path); t.fn(Cls); logSuccess(t.name + ' patched'); } catch(e) { logInfo(t.name + ' not present'); }
         });
 
-        logSuccess('Unpinning setup completed');
-        logSection('SSL Pinning Bypass (complete)');
+        logSuccess('Enhanced unpinning setup completed');
+        logSection('Enhanced SSL Pinning Bypass (complete)');
     });
 }, 0);
 
 // ---------- END ----------
-
